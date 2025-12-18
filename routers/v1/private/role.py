@@ -12,7 +12,7 @@ from database.crud.role import RoleService
 from database.crud.user import UserService
 from database.db.session import get_async_db
 from database.schemas.role import RoleReadWithPermissions
-from dependencies.security import require_all_permissions, JWTUser
+from dependencies.security import require_all_permissions
 from deps import get_auth_service
 from schemas.request_schemas.role import CreateRoleIn, UpdateRoleIn
 from schemas.response_schemas.users import FullUserOut
