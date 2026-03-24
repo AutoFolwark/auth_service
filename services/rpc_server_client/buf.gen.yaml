@@ -1,6 +1,6 @@
 version: v2
 inputs:
-  - module: buf.build/vinaslt/main:main
+  - module: buf.build/autofolwark/main:main
 
 plugins:
   - remote: buf.build/protocolbuffers/python:v28.3

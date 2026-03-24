@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 env:
-  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/vinaslt_auth_service
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/auth_service
   IMAGE_TAG: ${{ github.ref_name == 'main' && 'main' || 'dev' }}
   CACHE_SCOPE: ${{ github.ref_name }}
 
@@ -146,6 +146,6 @@ jobs:
           script: |
             set -x
             docker pull ${{ env.IMAGE_NAME }}:main
-            cd /srv/vinaslt/deploy_conf
+            cd /srv/autofolwark/deploy_conf
             docker compose up -d --build
             echo "Deployment complete"
