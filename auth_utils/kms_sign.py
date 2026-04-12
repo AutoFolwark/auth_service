@@ -6,7 +6,7 @@ import aioboto3
 import redis
 from redis import Redis
 
-from config import settings
+from config import aws_boto_session_kwargs, settings
 from cryptography.hazmat.primitives import serialization
 
 
@@ -128,14 +128,9 @@ class Signer:
 
 if __name__ == "__main__":
     async def main():
-        kms_session = aioboto3.Session(
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-            region_name=settings.AWS_REGION
-        )
+        kms_session = aioboto3.Session(**aws_boto_session_kwargs())
         get_redis_client = await redis.asyncio.from_url(settings.REDIS_URL, decode_responses=True)
         signer = Signer(kms_session, key_arn=settings.AWS_KMS_KEY_ARN, redis_client=get_redis_client)
         print(await signer.get_public_key_pem())
         signature = await signer.sign(b"hello world")
-        print(signature)
     asyncio.run(main())

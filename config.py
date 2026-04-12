@@ -41,8 +41,8 @@ class Settings(BaseSettings):
 
     # AWS
     AWS_REGION: str = "eu-north-1"
-    AWS_ACCESS_KEY_ID: str = 'test-key'
-    AWS_SECRET_ACCESS_KEY: str = 'test-key'
+    AWS_ACCESS_KEY_ID: str = ""
+    AWS_SECRET_ACCESS_KEY: str = ""
     AWS_KMS_KEY_ARN: str = 'arn:aws:kms:eu-north-1:669409472579:key/a0e62c95-68a4-4cb2-814f-7b02b654a878'
 
     # Security
@@ -76,3 +76,12 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def aws_boto_session_kwargs() -> dict:
+    """Kwargs for aioboto3.Session. If access keys are unset, boto uses the default chain (e.g. EC2 instance role, ~/.aws/credentials)."""
+    kw: dict = {"region_name": settings.AWS_REGION}
+    if settings.AWS_ACCESS_KEY_ID and settings.AWS_SECRET_ACCESS_KEY:
+        kw["aws_access_key_id"] = settings.AWS_ACCESS_KEY_ID
+        kw["aws_secret_access_key"] = settings.AWS_SECRET_ACCESS_KEY
+    return kw
