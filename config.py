@@ -61,8 +61,8 @@ class Settings(BaseSettings):
         return self.ENVIRONMENT in [Environment.DEVELOPMENT]
 
 
-    # RabbitMQ
-    RABBITMQ_URL: str = "amqp://guest:guest@localhost/"
+    # RabbitMQ — must include host and port (e.g. amqp://user:pass@172.31.34.233:5672/).
+    RABBITMQ_URL: str = "amqp://guest:guest@localhost:5672/"
     RABBITMQ_EXCHANGE_NAME: str = 'events'
 
     # rpc

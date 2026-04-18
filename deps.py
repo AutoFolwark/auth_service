@@ -9,10 +9,11 @@ from aioboto3 import Session
 from fastapi import Depends
 from redis.asyncio import Redis
 
+from core.logger import logger
 from config import aws_boto_session_kwargs, settings
-from custom_exceptions import raise_rate_limiter_error
+from custom_exceptions import MessagingUnavailableProblem, raise_rate_limiter_error
 from database.crud.singin_key import SigningKeyService
-from database.db.session import get_async_db
+from database.db.session import AsyncSessionLocal, get_async_db
 from rabbit_service.service import RabbitMQPublisher
 from rate_limit_ids import user_identifier
 
@@ -44,3 +45,25 @@ async def get_rabbit_mq_service() -> AsyncGenerator[RabbitMQPublisher, None]:
         yield service
     finally:
         await service.close()
+
+
+async def ensure_rabbitmq_reachable() -> None:
+    """Fail fast if RabbitMQ is not accepting connections (e.g. registration)."""
+    service = RabbitMQPublisher()
+    try:
+        await service.connect()
+    except Exception as exc:
+        logger.exception("RabbitMQ connection failed")
+        raise MessagingUnavailableProblem(
+            detail="Registration is unavailable: messaging service is not reachable.",
+        ) from exc
+    finally:
+        await service.close()
+
+
+async def get_async_db_for_register(
+    _: None = Depends(ensure_rabbitmq_reachable),
+) -> AsyncGenerator[AsyncSession, None]:
+    """DB session for registration; RabbitMQ must connect before the session opens."""
+    async with AsyncSessionLocal() as session:
+        yield session
