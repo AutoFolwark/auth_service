@@ -6,7 +6,7 @@ from fastapi_limiter import FastAPILimiter
 from fastapi_pagination import add_pagination
 from fastapi_problem.handler import add_exception_handler, new_exception_handler
 
-from config import rabbitmq_broker_for_logs, settings
+from config import settings
 from core.logger import logger
 from routers.v1.private.permission import permissions_router
 from routers.v1.private.role import roles_router
@@ -61,9 +61,7 @@ def create_app(
         if setup_limiter:
             await setup_fastapi_limiter(custom_redis_client)
 
-        logger.info(
-            f"{settings.APP_NAME} started! RabbitMQ broker from settings (RABBITMQ_URL): {rabbitmq_broker_for_logs()}"
-        )
+        logger.info(f"{settings.APP_NAME} started!")
         yield
 
         if setup_limiter:

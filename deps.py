@@ -10,7 +10,7 @@ from fastapi import Depends
 from redis.asyncio import Redis
 
 from core.logger import logger
-from config import aws_boto_session_kwargs, rabbitmq_broker_for_logs, settings
+from config import aws_boto_session_kwargs, settings
 from custom_exceptions import MessagingUnavailableProblem, raise_rate_limiter_error
 from database.crud.singin_key import SigningKeyService
 from database.db.session import AsyncSessionLocal, get_async_db
@@ -53,9 +53,7 @@ async def ensure_rabbitmq_reachable() -> None:
     try:
         await service.connect()
     except Exception as exc:
-        logger.exception(
-            f"RabbitMQ connection failed (broker from settings: {rabbitmq_broker_for_logs()})"
-        )
+        logger.exception("RabbitMQ connection failed")
         raise MessagingUnavailableProblem(
             detail="Registration is unavailable: messaging service is not reachable."
         ) from exc
