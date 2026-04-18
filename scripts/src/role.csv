@@ -1,4 +1,5 @@
-id,name,is_default,description,created_at
-1,user,1,Default role,2025-09-09 15:28:20.763524
-2,admin,0,Default role,2025-09-09 15:28:20.796263
-3,developer,0,Default role,2025-09-09 15:28:20.834757
+﻿id,name,is_default,description,created_at
+1,user,1,Default role,2025-09-09 15:28:20.763524+00
+2,admin,"",Default role,2025-09-09 15:28:20.796263+00
+3,developer,"",Default role,2025-09-09 15:28:20.834757+00
+4,Owner ,"",Manage Whole Website,2025-10-27 22:17:37.461395+00

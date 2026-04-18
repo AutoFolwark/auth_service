@@ -6,9 +6,13 @@ on:
   pull_request:
     branches: [ main ]
 
-
 env:
-  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/auth_service
+  # Docker Hub repository name (the part after ${DOCKERHUB_USERNAME}/); used for build and push.
+  IMAGE_REPO: auth_service
+  # docker compose service name(s) in compose files (pull/up); may differ from IMAGE_REPO.
+  # One image can back several containers: list multiple names separated by commas (optional spaces).
+  # Example: auth_service or auth_api,auth_worker
+  SERVICE_NAME: auth_service, auth_rpc_service, auth_init_db
   IMAGE_TAG: ${{ github.ref_name == 'main' && 'main' || 'dev' }}
   CACHE_SCOPE: ${{ github.ref_name }}
 
@@ -16,10 +20,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.13'
 
@@ -31,7 +35,7 @@ jobs:
           installer-parallel: true
 
       - name: Cache poetry dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .venv
           key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
@@ -61,27 +65,27 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push by digest
         id: build
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile
           platforms: ${{ matrix.platform }}
-          outputs: type=image,name=${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
-          cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-${{ env.CACHE_SCOPE }}-${{ matrix.cache-tag }}
-          cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-${{ env.CACHE_SCOPE }}-${{ matrix.cache-tag }},mode=max
+          outputs: type=image,name=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_REPO }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_REPO }}:buildcache-${{ env.CACHE_SCOPE }}-${{ matrix.cache-tag }}
+          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_REPO }}:buildcache-${{ env.CACHE_SCOPE }}-${{ matrix.cache-tag }},mode=max
 
       - name: Export digest
         run: |
@@ -90,7 +94,7 @@ jobs:
           touch "/tmp/digests/${digest#sha256:}"
 
       - name: Upload digest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: digests-${{ matrix.cache-tag }}
           path: /tmp/digests/*
@@ -102,17 +106,17 @@ jobs:
     needs: build
     steps:
       - name: Download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: /tmp/digests
           pattern: digests-*
           merge-multiple: true
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -120,7 +124,7 @@ jobs:
       - name: Create manifest list and push
         working-directory: /tmp/digests
         env:
-          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+          IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_REPO }}
           IMAGE_TAG: ${{ env.IMAGE_TAG }}
         run: |
           set -euo pipefail
@@ -136,17 +140,91 @@ jobs:
   deploy:
     needs: merge
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     steps:
-      - name: Deploy on server via SSH
+      # Use separate steps per branch so SSH credentials are never chosen via `&&`/`||` on
+      # possibly empty secrets (undefined secrets are "" and would fall back incorrectly).
+      - name: Redeploy ${{ env.SERVICE_NAME }} on production (Infisical)
+        if: github.ref_name == 'main'
         uses: appleboy/ssh-action@v1.2.2
+        env:
+          INFISICAL_CLIENT_ID: ${{ secrets.INFISICAL_CLIENT_ID }}
+          INFISICAL_CLIENT_SECRET: ${{ secrets.INFISICAL_CLIENT_SECRET }}
+          INFISICAL_PROJECT_ID: ${{ secrets.INFISICAL_PROJECT_ID }}
+          DEPLOY_BRANCH: ${{ github.ref_name }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          SERVICE_NAME: ${{ env.SERVICE_NAME }}
+        with:
+          host: ${{ secrets.PROD_SERVER_HOST }}
+          username: ${{ secrets.PROD_SERVER_USER }}
+          key: ${{ secrets.PROD_SERVER_SSH_KEY }}
+          port: 22
+          timeout: 300s
+          command_timeout: 600s
+          envs: INFISICAL_CLIENT_ID,INFISICAL_CLIENT_SECRET,INFISICAL_PROJECT_ID,DEPLOY_BRANCH,DEPLOY_PATH,SERVICE_NAME
+          script: |
+            set -e
+            COMPOSE_FILE="prod/docker-compose.yml"
+            INFISICAL_ENV="prod"
+            [ -n "${DEPLOY_PATH:-}" ] || { echo "DEPLOY_PATH is unset"; exit 1; }
+            cd "$DEPLOY_PATH" || exit 1
+            export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id="$INFISICAL_CLIENT_ID" --client-secret="$INFISICAL_CLIENT_SECRET" --domain=https://eu.infisical.com --silent --plain)
+            if [ -z "$INFISICAL_TOKEN" ]; then
+              echo "Infisical login failed or returned empty token"
+              exit 2
+            fi
+
+            ic_run() {
+              infisical run --projectId="$INFISICAL_PROJECT_ID" --env="$INFISICAL_ENV" --token="$INFISICAL_TOKEN" --domain=https://eu.infisical.com -- "$@"
+            }
+
+            # SERVICE_NAME: comma-separated list → space-separated args for docker compose
+            SERVICES=$(printf '%s' "$SERVICE_NAME" | tr ',' ' ' | xargs)
+            [ -n "$SERVICES" ] || { echo "SERVICE_NAME is empty"; exit 1; }
+
+            ic_run sh -c "docker compose -f $COMPOSE_FILE pull $SERVICES"
+            ic_run sh -c "docker compose -f $COMPOSE_FILE up -d $SERVICES"
+            echo "Redeploy completed successfully for: $SERVICES"
+
+      - name: Redeploy ${{ env.SERVICE_NAME }} on staging/demo (Infisical)
+        if: github.ref_name == 'dev'
+        uses: appleboy/ssh-action@v1.2.2
+        env:
+          INFISICAL_CLIENT_ID: ${{ secrets.INFISICAL_CLIENT_ID }}
+          INFISICAL_CLIENT_SECRET: ${{ secrets.INFISICAL_CLIENT_SECRET }}
+          INFISICAL_PROJECT_ID: ${{ secrets.INFISICAL_PROJECT_ID }}
+          DEPLOY_BRANCH: ${{ github.ref_name }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          SERVICE_NAME: ${{ env.SERVICE_NAME }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
+          timeout: 300s
+          command_timeout: 600s
+          envs: INFISICAL_CLIENT_ID,INFISICAL_CLIENT_SECRET,INFISICAL_PROJECT_ID,DEPLOY_BRANCH,DEPLOY_PATH,SERVICE_NAME
           script: |
-            set -x
-            docker pull ${{ env.IMAGE_NAME }}:main
-            cd /srv/autofolwark/deploy_conf
-            docker compose up -d --build
-            echo "Deployment complete"
+            set -e
+            COMPOSE_FILE="demo/docker-compose.demo.yml"
+            INFISICAL_ENV="staging"
+            [ -n "${DEPLOY_PATH:-}" ] || { echo "DEPLOY_PATH is unset"; exit 1; }
+            cd "$DEPLOY_PATH" || exit 1
+            export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id="$INFISICAL_CLIENT_ID" --client-secret="$INFISICAL_CLIENT_SECRET" --domain=https://eu.infisical.com --silent --plain)
+            if [ -z "$INFISICAL_TOKEN" ]; then
+              echo "Infisical login failed or returned empty token"
+              exit 2
+            fi
+
+            ic_run() {
+              infisical run --projectId="$INFISICAL_PROJECT_ID" --env="$INFISICAL_ENV" --token="$INFISICAL_TOKEN" --domain=https://eu.infisical.com -- "$@"
+            }
+
+            # SERVICE_NAME: comma-separated list → space-separated args for docker compose
+            SERVICES=$(printf '%s' "$SERVICE_NAME" | tr ',' ' ' | xargs)
+            [ -n "$SERVICES" ] || { echo "SERVICE_NAME is empty"; exit 1; }
+
+            ic_run sh -c "docker compose -f $COMPOSE_FILE pull $SERVICES"
+            ic_run sh -c "docker compose -f $COMPOSE_FILE up -d $SERVICES"
+            echo "Redeploy completed successfully for: $SERVICES"
+

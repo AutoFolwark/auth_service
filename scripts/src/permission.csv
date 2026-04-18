@@ -1,4 +1,18 @@
-id,name,description,resource,action,created_at
+﻿id,name,description,resource,action,created_at
+33,read all carfaxes,"",carfax.all,read,2025-12-21 19:27:46.479897+00
+15,Read own plan,"",payments.plan.own,read,2025-11-13 08:33:07.752963+00
+16,write account all,"",payments.account.all,write,2025-11-13 08:33:34.720587+00
+17,read account all,"",payments.account.all,read,2025-11-13 08:33:46.525885+00
+18,delete plan all,"",payments.plan.all,delete,2025-11-13 08:33:58.849214+00
+19,write plan all,"",payments.plan.all,write,2025-11-13 08:34:10.507446+00
+20,read plan all,"",payments.plan.all,read,2025-11-13 08:34:25.574751+00
+21,write bid all,"",bid.all,write,2025-11-13 08:34:43.956003+00
+22,read bid all,"",bid.all,read,2025-11-13 08:34:54.976499+00
+23,read bid own,"",bid.own,read,2025-11-13 08:35:08.280062+00
+24,write bid own,"",bid.own,write,2025-11-13 08:35:25.16559+00
+25,read favorites all,"",favorites.all,read,2025-11-13 08:36:20.156396+00
+26,write favorites all,"",favorites.all,write,2025-11-13 08:36:28.699061+00
+11,Calculator Exchange Rate,"",calculator.exchange-rate,write,2025-10-27 22:13:10.296193+00
 1,Default permission,Default permission,auth.user.own,read,2025-09-09 15:28:20.77493+00
 2,Default permission,Default permission,auth.user.own,write,2025-09-09 15:28:20.783705+00
 3,Default permission,Default permission,auth.user.all,read,2025-09-09 15:28:20.802686+00
@@ -9,19 +23,13 @@ id,name,description,resource,action,created_at
 8,Default permission,Default permission,auth.permission.all,read,2025-09-09 15:28:20.854507+00
 9,Default permission,Default permission,auth.permission.all,write,2025-09-09 15:28:20.860308+00
 10,Default permission,Default permission,auth.permission.all,delete,2025-09-09 15:28:20.866642+00
-11,Calculator Exchange Rate,,calculator.exchange-rate,write,2025-10-27 22:13:10.296193+00
 12,favorites.own:write,favorites.own:write,favorites.own,write,2025-11-04 17:08:20.032371+00
 13,favorites.own:read,favorites.own:read,favorites.own,read,2025-11-04 17:08:36.664773+00
 14,favorites.own:delete,favorites.own:delete,favorites.own,delete,2025-11-04 17:08:47.479222+00
-15,Read own plan,,payments.plan.own,read,2025-11-13 08:33:07.752963+00
-16,write account all,,payments.account.all,write,2025-11-13 08:33:34.720587+00
-17,read account all,,payments.account.all,read,2025-11-13 08:33:46.525885+00
-18,delete plan all,,payments.plan.all,delete,2025-11-13 08:33:58.849214+00
-19,write plan all,,payments.plan.all,write,2025-11-13 08:34:10.507446+00
-20,read plan all,,payments.plan.all,read,2025-11-13 08:34:25.574751+00
-21,write bid all,,bid.all,write,2025-11-13 08:34:43.956003+00
-22,read bid all,,bid.all,read,2025-11-13 08:34:54.976499+00
-23,read bid own,,bid.own,read,2025-11-13 08:35:08.280062+00
-24,write bid own,,bid.own,write,2025-11-13 08:35:25.16559+00
-25,read favorites all,,favorites.all,read,2025-11-13 08:36:20.156396+00
-26,write favorites all,,favorites.all,write,2025-11-13 08:36:28.699061+00
+27,Order Read All,Read Orders of all users,order.all,read,2025-12-18 17:46:01.159044+00
+28,Order Read Own,Read own orders,order.own,read,2025-12-18 17:46:25.864893+00
+29,Order Write All,Change and create orders ,order.all,write,2025-12-18 17:47:38.989923+00
+30,Write Own Orders,For Choosing port etc,order.own,write,2025-12-18 17:48:09.087596+00
+31,Carfax Read Own,Read own carfaxes ,carfax.own,read,2025-12-18 17:50:04.111606+00
+32,Carfax Write Own,Buy carfaxes and manage it,carfax.own,write,2025-12-18 17:50:36.753718+00
+34,delete all order,"",order.all,delete,2026-01-27 19:51:13.149428+00
