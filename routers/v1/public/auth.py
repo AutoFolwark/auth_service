@@ -28,7 +28,7 @@ from database.schemas.user import (
 )
 
 from database.schemas.user_session import UserSessionCreate, UserSessionUpdate
-from deps import get_async_db_for_register, get_auth_service, get_rate_limiter
+from deps import get_auth_service, get_rate_limiter
 from schemas.request_schemas.logout import LogoutRequest
 from schemas.request_schemas.refresh import RefreshTokenIn
 from schemas.request_schemas.registration import UserIn, EmailPassIn
@@ -50,7 +50,7 @@ auth_v1_router = APIRouter()
 async def register(
         user_data: UserIn = Body(..., description="User registration payload"),
         response: Response = None,
-        db: AsyncSession = Depends(get_async_db_for_register),
+        db: AsyncSession = Depends(get_async_db),
         auth_service: AuthService = Depends(get_auth_service),
 ) -> User:
     logger.info('Registration attempt', extra={"email": user_data.email, "phone_number": user_data.phone_number})

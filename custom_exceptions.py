@@ -1,4 +1,4 @@
-from rfc9457 import ConflictProblem, Problem, StatusProblem, UnauthorisedProblem, ForbiddenProblem, BadRequestProblem
+from rfc9457 import ConflictProblem, Problem, UnauthorisedProblem, ForbiddenProblem, BadRequestProblem
 from fastapi import Request, Response
 
 class RegisteredWithPresentCredentialsProblem(ConflictProblem):
@@ -37,13 +37,6 @@ class NotEnoughPermissionsProblem(ForbiddenProblem):
     type = "not-enough-permissions"
     title = "Not enough permissions"
     detail = "Not enough permissions"
-
-
-class MessagingUnavailableProblem(StatusProblem):
-    """Raised when the message broker (RabbitMQ) cannot be reached."""
-
-    status = 503
-    title = "Messaging service unavailable"
 
 
 async def raise_code_rate_limiter_error(request: Request, response: Response, pexpire: int):

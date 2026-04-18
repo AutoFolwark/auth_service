@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 
 from database.db.session import get_async_db
 from database.models import Base
-from deps import get_async_db_for_register, get_redis_client, get_auth_service, get_rabbit_mq_service
+from deps import get_redis_client, get_auth_service, get_rabbit_mq_service
 from rabbit_service.service import RabbitMQPublisher
 from dependencies.security import get_current_user, require_all_permissions
 from scripts.init_db import seed_db
@@ -51,7 +51,6 @@ async def get_app(
 
     app.dependency_overrides[get_current_user] = override_get_current_user
     app.dependency_overrides[get_async_db] = override_get_db
-    app.dependency_overrides[get_async_db_for_register] = override_get_db
     app.dependency_overrides[require_all_permissions] = mock_require_all_permissions
     app.dependency_overrides[get_redis_client] = override_get_redis
     app.dependency_overrides[get_auth_service] = override_get_auth_service
