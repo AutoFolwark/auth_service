@@ -1,4 +1,5 @@
 from enum import Enum
+from urllib.parse import urlparse
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -76,6 +77,15 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def rabbitmq_broker_for_logs(url: str | None = None) -> str:
+    """Host:port из RABBITMQ_URL для логов (без логина и пароля)."""
+    raw = url if url is not None else settings.RABBITMQ_URL
+    parsed = urlparse(raw)
+    host = parsed.hostname or "(нет хоста)"
+    port = parsed.port or 5672
+    return f"{host}:{port}"
 
 
 def aws_boto_session_kwargs() -> dict:
