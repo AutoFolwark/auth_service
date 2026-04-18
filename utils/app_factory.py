@@ -62,9 +62,7 @@ def create_app(
             await setup_fastapi_limiter(custom_redis_client)
 
         logger.info(
-            "%s started! RabbitMQ broker from settings (RABBITMQ_URL): %s",
-            settings.APP_NAME,
-            rabbitmq_broker_for_logs(),
+            f"{settings.APP_NAME} started! RabbitMQ broker from settings (RABBITMQ_URL): {rabbitmq_broker_for_logs()}"
         )
         yield
 

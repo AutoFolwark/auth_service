@@ -54,11 +54,10 @@ async def ensure_rabbitmq_reachable() -> None:
         await service.connect()
     except Exception as exc:
         logger.exception(
-            "RabbitMQ connection failed (broker from settings: %s).",
-            rabbitmq_broker_for_logs(),
+            f"RabbitMQ connection failed (broker from settings: {rabbitmq_broker_for_logs()})"
         )
         raise MessagingUnavailableProblem(
-            detail="Registration is unavailable: messaging service is not reachable.",
+            detail="Registration is unavailable: messaging service is not reachable."
         ) from exc
     finally:
         await service.close()
