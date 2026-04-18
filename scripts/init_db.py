@@ -7,7 +7,10 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import pandas as pd
-from sqlalchemy import Engine, text
+from sqlalchemy import Engine, MetaData, Table, text
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+
 from database.db.session import engine
 from core.logger import logger
 
@@ -32,6 +35,52 @@ def _coerce_bool_series(series: pd.Series) -> pd.Series:
             return s not in ("", "0", "false", "none", "nan")
 
     return series.map(to_bool)
+
+
+def _reflect_table(db_engine: Engine, table_name: str) -> Table:
+    metadata = MetaData()
+    metadata.reflect(bind=db_engine, only=[table_name], resolve_fks=False)
+    if table_name in metadata.tables:
+        return metadata.tables[table_name]
+    qualified = f"public.{table_name}"
+    if qualified in metadata.tables:
+        return metadata.tables[qualified]
+    raise KeyError(
+        f"Table {table_name!r} not found after reflect; have {list(metadata.tables)!r}"
+    )
+
+
+def _prepare_dataframe_for_sql(df: pd.DataFrame, table: str) -> pd.DataFrame:
+    """Normalize CSV dtypes for SQLAlchemy (matches prior pandas.to_sql behavior)."""
+    df = df.copy()
+    if 'created_at' in df.columns:
+        df['created_at'] = pd.to_datetime(df['created_at'], utc=True, errors='coerce')
+    if table == 'role' and 'is_default' in df.columns:
+        df['is_default'] = _coerce_bool_series(df['is_default'])
+    return df
+
+
+def _insert_ignore_by_id(db_engine: Engine, table_name: str, df: pd.DataFrame) -> None:
+    """Append rows whose primary key id is not present; skip existing ids."""
+    if df.empty:
+        return
+    df = df.where(pd.notnull(df), None)
+    records = df.to_dict("records")
+    if not records:
+        return
+    tbl = _reflect_table(db_engine, table_name)
+    dialect_name = db_engine.dialect.name
+    if dialect_name == "postgresql":
+        stmt = pg_insert(tbl).values(records)
+    elif dialect_name == "sqlite":
+        stmt = sqlite_insert(tbl).values(records)
+    else:
+        raise RuntimeError(
+            f"Idempotent seed supports postgresql and sqlite; got {dialect_name!r}"
+        )
+    stmt = stmt.on_conflict_do_nothing(index_elements=["id"])
+    with db_engine.begin() as conn:
+        conn.execute(stmt)
 
 
 def reset_all_sequences(db_engine: Engine):
@@ -97,36 +146,22 @@ def seed_db(db_engine: Engine):
         'role_permissions': src_dir / 'role_permissions.csv',
     }
 
-    delete_order = [
-        'role_permissions',
-        'role',
-        'permission',
-    ]
-
+    # FK order: permission & role before role_permissions
     insert_order = [
         'permission',
         'role',
-        'role_permissions'
+        'role_permissions',
     ]
-
-    with db_engine.begin() as conn:
-        for table in delete_order:
-            logger.info(f'Clearing table {table}')
-            try:
-                conn.execute(text(f'DELETE FROM "{table}"'))
-            except Exception as e:
-                logger.warning(f'Failed to delete from {table}: {e}')
 
     for table in insert_order:
         path = tables[table]
-        logger.info(f'Seeding table {table} from {path}')
+        logger.info(f'Seeding table {table} from {path} (insert new ids only)')
         df = pd.read_csv(path)
         if df.empty:
             logger.warning(f'Skipping {table}: CSV is empty')
             continue
-        if table == 'role' and 'is_default' in df.columns:
-            df['is_default'] = _coerce_bool_series(df['is_default'])
-        df.to_sql(table, db_engine, if_exists='append', index=False)
+        df = _prepare_dataframe_for_sql(df, table)
+        _insert_ignore_by_id(db_engine, table, df)
 
     logger.info('Resetting all sequences to match current max ids')
     reset_all_sequences(db_engine)
