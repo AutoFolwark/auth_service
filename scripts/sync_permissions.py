@@ -18,7 +18,8 @@ SRC_DIR = CURRENT_FILE.parent / "src"
 
 
 def _read_csv(path: Path) -> list[dict[str, str]]:
-    with path.open(newline="") as handle:
+    # Seed files are saved with a UTF-8 BOM, so the first header is "\ufeffid".
+    with path.open(newline="", encoding="utf-8-sig") as handle:
         return list(csv.DictReader(handle))
 
 
